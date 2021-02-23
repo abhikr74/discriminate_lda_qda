@@ -1,0 +1,74 @@
+---
+title: "discriminant_analysis_lab4"
+author: "Abhishek Kumar"
+date: "2/23/2021"
+output: html_document
+---
+
+# Discriminant Analysis
+
+
+__Required packages and libraries__
+```{r packages}
+library(MASS)
+```
+
+
+__Setting Working Directory__
+```{r wd}
+setwd('G:\\My Drive\\spring_semester\\multivariate_analysis\\multivariate_analysis_labs\\lab4')
+```
+
+
+
+# 1. Linear Discriminant Analysis (LDA)
+
+> For this analysis I will be using diabetes data where each row represents a patients records.
+  1. Where 1st columm contains the tyoe of diabetes.
+  2.Next three columns contain the glucose,insulin and sspg levels(steady-stage plasma glucose levels) for each patient. 
+> In a Linear Discrimminant Analysis it is assumed the known groups within the data are characterized by a multivariate normal densities with different means and equal covariances for all groups.
+> lda() function can be used to perform the LDA on the diabetes data.
+
+__Loading diabetes data__
+```{r load}
+diabetes = read.csv('diabetes.csv')
+str(diabetes)
+diabetes$class = as.factor(diabetes$class)
+head(diabetes)
+summary(diabetes)
+
+
+col = c('red', 'green', 'blue')
+symb = c(17, 18, 19)
+pairs(diabetes[, 2:4], col = adjustcolor(col[diabetes$class]), pch = symb[diabetes$class])
+
+```
+
+> From the above plot I can see that:
+  1. There appears to be linear relationship between glucose and insulin for diabetes patients in general, there seems to be group at lower values of glucose and insulin levels.
+  2.Glucose & SSGP, and insulin & ssgp have non-linear relationship among them.
+
+__linear discriminant analysis__
+
+The lda function takes, as an argument, a formula of the form :
+
+> groups ∼ x1 + x2 + ... 
+
+Where the left hand side is the known grouping factor and the right hand side specifies the variables.
+
+> LDA determines means of each group and then computes for each individual observation the probability of belonging to different groups, then finally the individual will be attached to the group with the highest probablity.
+
+```{r lda}
+
+lda_res =  lda(class ~ ., data = diabetes)
+
+# accessing attributes of lda object
+lda_res$prior # This returns the proportion observations in each class
+lda_res$means # This returns the mean of each variable in each group
+lda_res$coefficients # This returns the linear combinations of predictor variables which are used to form the LDA decision rules.
+
+plot(lda_res)
+
+```
+> From the prior results, I can say that there are 24% patients with checmical type diabetes, 52% are in normal category and around 22% are suffering from overt diabetes.  
+> Patients with overt type diabetes have relatively very high levels of isulin, glucose and low levels of ssgp levels compared to chemical and normal type diabetic patients.

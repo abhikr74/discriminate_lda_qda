@@ -72,3 +72,153 @@ plot(lda_res)
 ```
 > From the prior results, I can say that there are 24% patients with checmical type diabetes, 52% are in normal category and around 22% are suffering from overt diabetes.  
 > Patients with overt type diabetes have relatively very high levels of isulin, glucose and low levels of ssgp levels compared to chemical and normal type diabetic patients.
+
+__Constructing linear discriminant function__
+
+> The outputs of the lda() function can be used to calculate the linear discriminant functions, δg(x).
+
+
+```{r lda_fn}
+N = nrow(diabetes)
+G = length(table(diabetes$class)) # length(unique(diabetes$class)) number of actual groups in the data.
+
+diabetes_norm = subset(diabetes, class == 'normal')
+diabetes_chem = subset(diabetes, class == 'chemical')
+diabetes_overt = subset(diabetes, class == 'overt')
+
+# covariance matrix corresponding to normal, chemical and overt categories in diabetes data.
+cov_norm = cov(diabetes_norm[, 2:4]) 
+cov_chem = cov(diabetes_chem[, 2:4]) 
+cov_overt = cov(diabetes_overt[, 2:4]) 
+
+# Calculating maximum likelihooD estimate of common covariance matrix, which simply the weighted average of group specific covariance matrix.
+
+cov_all = ( (cov_norm*(nrow(diabetes_norm)-1)) + (cov_chem*(nrow(diabetes_chem)-1)) + (cov_overt*(nrow(diabetes_overt)-1)) ) / (N-G)
+```
+
+__Function to calculate linear discriminant for any observation x for each group g__
+
+```{r ldf}
+
+ldf = function(x, prior, mu, covar){
+  
+  # This function calculates the linear discriminant value of an observation for a group g.
+  # Inputs :
+    # X, vector of an observation for p variables in the data set
+    # estimate of probability of belonginga a group g.
+    # estimated means for each variable in each group.
+    # covar is the estimated common covariance matrix 
+  # Returns : linear discriminant value of an observation for each group g.
+  
+  x = matrix(as.matrix(x), ncol = 1) # checking if the data is in correct format
+  
+  # formula to calculate linear discriminant of an observation
+   ld = log(prior) - (0.5*t(mu)%*%solve(covar)%*%mu) + t(x)%*%solve(covar)%*%mu
+   
+  return(ld)
+  
+}
+
+```
+
+
+__ Calculating the linear discriminant function for all patients__
+
+```{r ldf_obs}
+id = nrow(diabetes)
+dfs = matrix(NA, id, G) # empty matrix to store ld for each group for each observations in the data set.
+dfs_max_class = rep(NA, id) # empty vector to store the class for which linear discriminant function is maximum for each observation.
+for(i in 1:id){
+  
+  for(g in 1:G){
+
+    dfs[i,g] = ldf(diabetes[i, 2:4], lda_res$prior[g], lda_res$means[g,], cov_all)
+    
+  } # class g
+  
+  #extracting the class name for whicg the linear discriminant function is maximum for a particular observation.
+  dfs_max_class[i] = names(lda_res$prior)[dfs[i,] == max(dfs[i,])]
+  
+} # rows i
+
+dfs_max_class
+```
+
+
+__Cross Validation__
+
+```{r cv}
+# By setting CV = TRUE, we will now get classification of each observation under the fitted model, and the posterior probabilities of each observation for each of the classes.
+
+lda_res_cv =  lda(class ~ ., CV = TRUE, data = diabetes) 
+lda_res_cv$class # Predicted classes of each observation by the model
+
+misclassification_rate = function(predicted_class, observed_class){
+  
+  # This function calculate the number of classes which are not classified correctly by the model, and calculates the misclassification rate.
+  # Inputs :
+    # predicted class labels for each observation and actual class labels observed.
+  # Returns the ratio of number of misclassified observation to the total number of observations
+  
+  misclassification = 0
+  
+  tab = table(predicted_class, observed_class)
+
+  # calculating misclassification between predicted and actual observed classes of each observation.
+  for(i in 1:G){
+  
+    for(j in 1:G){
+    
+      if(i != j) misclassification = misclassification + tab[i,j]
+    
+    } # columns j
+  
+  } # rows i
+  
+  # misclassification rate
+  rate = misclassification/nrow(diabetes) * 100
+  
+  return(rate) # returning misclassification rate
+  
+} # misclassification
+
+
+```
+
+> From above calculations I can see that 19 observations were misclassified by the model among 145 observations.
+
+_We can calculate the posterior probabilities of an observation belonging to a particular group by exp(δg(x))_
+
+```{r posterior_prob_cal}
+
+# Matrix to store the posterior probability of each observation belonging to each class in the data.
+p = matrix(NA, nrow(diabetes), G) 
+
+for(i in 1:nrow(diabetes)){
+  
+  for(j in 1:G)
+    
+    p[i, j] = round(( exp(dfs[i,j]) / sum(exp(dfs[i, ])) ), 4)
+    
+}
+
+posteriors = data.frame('calculated' = p, 'fitted' = round(lda_res_cv$posterior, 4))
+```
+
+
+__Quadratic Discriminant Analysis Model__
+
+```{r qda}
+
+qda_res_cv = qda(class ~ ., CV =TRUE, data = diabetes)
+
+
+```
+__Misclassification results__
+```{r misclass}
+
+missclassification_lda = misclassification_rate(lda_res_cv$class, diabetes$class)
+missclassification_qda = misclassification_rate(qda_res_cv$class, diabetes$class)
+data.frame(missclassification_lda, missclassification_qda)
+```
+> Form the above missclassification rate, I can say that quadratic discriminant analysis model performed better in classification of the patients according to the type of diabetes. As earlier it was observed that throug pairs plot the nonlinear relatuionship between few couple of variables.

@@ -16,7 +16,7 @@ library(MASS)
 
 __Setting Working Directory__
 ```{r wd}
-setwd('G:\\My Drive\\spring_semester\\multivariate_analysis\\multivariate_analysis_labs\\lab4')
+setwd('G:\\My Drive\\spring_semester\\multivariate_analysis\\labs\\lab4')
 ```
 
 
